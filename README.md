@@ -36,18 +36,18 @@
    - Identified instances of `OrderID`, `ProductID` combinations with only Return records (`Returned = 1`) or coexistence of Purchase (`Returned = 0`) and Return records.
    - **Note:** The assumption was made to disregard these anomalies as part of the dataset's synthetic nature.
 
-2. Guided by the EDA insights, a preprocessing pipeline was implemented:
-   - Transformed string date columns into datetime format.
+2. Based on the EDA insights, a preprocessing pipeline was implemented:
    - Introduced a new `MSRP` column, computed as (`PurchasePrice / (1 - DiscountPct)`), rounded to the nearest decimal (e.g., 30.0).
-   - Created a novel `ProductID` column, distinct based on `ProductDepartment`, `ProductCost`, and `MSRP` (e.g., Youth_9_30.0).
+   - Created a `ProductID` column, distinct based on `ProductDepartment`, `ProductCost`, and `MSRP` (e.g., Youth_9_30.0).
    - Converted date columns into datetime format.
    - Derived `CustomerAge` column, indicating customer age during order, calculated as (`OrderDate - CustomerBirthDate) / 365`).
    - Excluded columns such as `ID` and `OrderDate` that offer no contribution to the target variable.
    - **Note:** The `OrderDate` would have been relevant if the orders were recent and if the minimum return day policy had been stipulated in the requirement.
    - Enabled One-Hot Encoding for categorical features like `CustomerState`, `ProductDepartment`, `ProductSize`, and `ProductID`.
-   - Enabled binning for the `CustomerAge` column using bins (0, 18, 30, 40, 50, 60, 70, inf).
+   - Enabled Binning for the `CustomerAge` column using bins (0, 18, 30, 40, 50, 60, 70, inf).
+   - Enabled Target Encoding on `CustomerID`, set to the mean of the `Returned` values.
 
-3. Following thorough comparison, the `Gradient Boosting Classifier` was selected as the optimal choice, based on an assessment of scores with other classifiers. To initiate the training process, execute [src/training.py](src/training.py):
+3. Following thorough comparison, the **Gradient Boosting Classifier** was selected as the optimal choice, based on an assessment of scores with other classifiers. To initiate the training process, execute [src/training.py](src/training.py):
     
     `python3 src/training.py`
 
@@ -77,5 +77,5 @@
     Brier Score: 0.1913358547475986
     ***************************************
     ```
-
+    - **NOTE** The models can be further evaluated by tuning the hyperparameters such as `n_estimators`, and `max_depth` for the ensemble classifiers and `C`, `solver`, and `max_iter` for Logistic Regression. However given the time constraint of the assignment, this step has been omitted.
     - Execute `mlflow ui` for a graphical representation of the runs and model comparisons.
