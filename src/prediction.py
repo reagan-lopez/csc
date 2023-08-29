@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score, brier_score_loss
 from urllib.parse import urlparse
 import mlflow
@@ -20,7 +20,7 @@ from dataclasses import dataclass
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
-models = {"GradientBoostingClassifier": GradientBoostingClassifier()}
+models = {"RandomForestClassifier": RandomForestClassifier()}
 
 
 def format_data(df):
@@ -30,9 +30,9 @@ def format_data(df):
     # Calculate ProductID column
     df["ProductID"] = (
         df["ProductDepartment"]
-        + "_"
+        + "-"
         + df["ProductCost"].astype(str)
-        + "_"
+        + "-"
         + df["MSRP"].astype(str)
     )
 
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(40)
 
-    dataset = "data/train.csv"
+    dataset = "data/training.csv"
     try:
         df = pd.read_csv(dataset, sep=",")
     except Exception as e:

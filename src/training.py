@@ -42,9 +42,9 @@ def format_data(df):
     # Calculate ProductID column
     df["ProductID"] = (
         df["ProductDepartment"]
-        + "_"
+        + "-"
         + df["ProductCost"].astype(str)
-        + "_"
+        + "-"
         + df["MSRP"].astype(str)
     )
 
@@ -123,7 +123,7 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(40)
 
-    dataset = "data/train.csv"
+    dataset = "data/training.csv"
     try:
         df = pd.read_csv(dataset, sep=",")
     except Exception as e:

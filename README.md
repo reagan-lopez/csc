@@ -21,9 +21,9 @@
     
     `python3 src/prediction.py`
 
-    - This program trains the `Gradient Boosting Classifier` model using the provided dataset [data/train.csv](data/train.csv).
+    - This program trains the `Random Forest Classifier` model using the provided dataset [data/train.csv](data/train.csv).
     - Subsequently, predictions are carried out on the provided dataset [data/test.csv](data/test.csv).
-    - The resulting predictions are saved in the [results](results) directory. E.g. [results/predictions_20230821075213.csv](results/predictions_20230821075213.csv)
+    - The resulting predictions are saved in the [results](results) directory. E.g. [results/predictions_20230829005920.csv](results/predictions_20230829005920.csv)
 
 
 ## Details
@@ -39,6 +39,7 @@
 2. Based on the EDA insights, a preprocessing pipeline was implemented:
    - Introduced a new `MSRP` column, computed as (`PurchasePrice / (1 - DiscountPct)`), rounded to the nearest decimal (e.g., 30.0).
    - Created a `ProductID` column, distinct based on `ProductDepartment`, `ProductCost`, and `MSRP` (e.g., Youth_9_30.0).
+   - Removed original purchase records (`Returned = 0`) for `OrderID`, `ProductID` combinations that have already been returned (`Returned = 1`).
    - Converted date columns into datetime format.
    - Derived `CustomerAge` column, indicating customer age during order, calculated as (`OrderDate - CustomerBirthDate) / 365`).
    - Excluded columns such as `ID` and `OrderDate` that offer no contribution to the target variable.
@@ -47,7 +48,7 @@
    - Enabled Binning for the `CustomerAge` column using bins (0, 18, 30, 40, 50, 60, 70, inf).
    - Enabled Target Encoding on `CustomerID`, set to the mean of the `Returned` values.
 
-3. Following thorough comparison, the **Gradient Boosting Classifier** was selected as the optimal choice, based on an assessment of scores with other classifiers. To initiate the training process, execute [src/training.py](src/training.py):
+3. Following thorough comparison, the **Random Forest Classifier** was selected as the optimal choice, based on an assessment of scores with other classifiers. To initiate the training process, execute [src/training.py](src/training.py):
     
     `python3 src/training.py`
 
@@ -55,26 +56,26 @@
 
     ```
     Evaluating model: GradientBoostingClassifier
-    ROC AUC: 0.7419921284704152
-    Brier Score: 0.1913358547475986
+    ROC AUC: 0.7597895615915848
+    Brier Score: 0.18851713908180542
 
     Evaluating model: LogisticRegression
-    ROC AUC: 0.7396066556626129
-    Brier Score: 0.19228916873836363
+    ROC AUC: 0.7581815853066254
+    Brier Score: 0.18905687710762256
 
     Evaluating model: AdaBoostClassifier
-    ROC AUC: 0.7386169233365765
-    Brier Score: 0.2398707134267459
+    ROC AUC: 0.7567083720785605
+    Brier Score: 0.23935704479332662
 
     Evaluating model: RandomForestClassifier
-    ROC AUC: 0.7137151974115621
-    Brier Score: 0.19958033062197025
+    ROC AUC: 0.7903369742741564
+    Brier Score: 0.17442135210768528
 
     ***************************************
     Best model for the dataset is:
-    GradientBoostingClassifier
-    ROC AUC: 0.7419921284704152
-    Brier Score: 0.1913358547475986
+    RandomForestClassifier
+    ROC AUC: 0.7903369742741564
+    Brier Score: 0.17442135210768528
     ***************************************
     ```
     - **NOTE** The models can be further evaluated by tuning the hyperparameters such as `n_estimators`, and `max_depth` for the ensemble classifiers and `C`, `solver`, and `max_iter` for Logistic Regression. However given the time constraint of the assignment, this step has been omitted.
