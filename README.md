@@ -34,11 +34,10 @@
    - Calculated the `MSRP` by utilizing `DiscountPct` and `PurchasePrice` columns.
    - **Note:** The assumption was made to round the MSRP to the nearest integer, mitigating the presence of unknown ProductIDs during predictions.
    - Identified instances of `OrderID`, `ProductID` combinations with only Return records (`Returned = 1`) or coexistence of Purchase (`Returned = 0`) and Return records.
-   - **Note:** The assumption was made to disregard these anomalies as part of the dataset's synthetic nature.
 
 2. Based on the EDA insights, a preprocessing pipeline was implemented:
    - Introduced a new `MSRP` column, computed as (`PurchasePrice / (1 - DiscountPct)`), rounded to the nearest decimal (e.g., 30.0).
-   - Created a `ProductID` column, distinct based on `ProductDepartment`, `ProductCost`, and `MSRP` (e.g., Youth_9_30.0).
+   - Created a `ProductID` column, distinct based on `ProductDepartment`, `ProductCost`, and `MSRP` (e.g., Youth-9-30.0).
    - Removed original purchase records (`Returned = 0`) for `OrderID`, `ProductID` combinations that have already been returned (`Returned = 1`).
    - Converted date columns into datetime format.
    - Derived `CustomerAge` column, indicating customer age during order, calculated as (`OrderDate - CustomerBirthDate) / 365`).
