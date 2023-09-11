@@ -1,102 +1,83 @@
 import warnings
-
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer
-from sklearn.pipeline import Pipeline
-from sklearn.ensemble import (
-    AdaBoostClassifier,
-    GradientBoostingClassifier,
-    RandomForestClassifier,
+from pyspark.sql import SparkSession
+from pyspark.ml.feature import (
+    StringIndexer,
+    OneHotEncoder,
+    VectorAssembler,
+    QuantileDiscretizer,
 )
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import roc_auc_score, brier_score_loss
-from urllib.parse import urlparse
+from pyspark.ml import Pipeline
+from pyspark.ml.classification import (
+    DecisionTreeClassifier,
+    RandomForestClassifier,
+    LogisticRegression,
+    GBTClassifier,
+)
+
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
 import mlflow
-from mlflow.models import infer_signature
-import mlflow.sklearn
+from mlflow.models.signature import infer_signature
+from mlflow.spark import log_model
 
 import logging
-
-from dataclasses import dataclass
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
 
 models = {
-    "GradientBoostingClassifier": GradientBoostingClassifier(),
-    "LogisticRegression": LogisticRegression(),
-    "AdaBoostClassifier": AdaBoostClassifier(),
-    "RandomForestClassifier": RandomForestClassifier(),
+    "LogisticRegression": LogisticRegression,
+    "DecisionTreeClassifier": DecisionTreeClassifier,
+    "RandomForestClassifier": RandomForestClassifier,
+    "GBTClassifier": GBTClassifier,
 }
 
 
 def format_data(df):
     # Calculate MSRP column
-    df["MSRP"] = (df["PurchasePrice"] / (1 - df["DiscountPct"])).round()
+    df = df.withColumn(
+        "MSRP", (df["PurchasePrice"] / (1 - df["DiscountPct"])).cast("integer")
+    )
 
     # Calculate ProductID column
-    df["ProductID"] = (
-        df["ProductDepartment"]
-        + "-"
-        + df["ProductCost"].astype(str)
-        + "-"
-        + df["MSRP"].astype(str)
+    df = df.withColumn(
+        "ProductID",
+        (
+            df["ProductDepartment"]
+            + "-"
+            + df["ProductCost"].cast("string")
+            + "-"
+            + df["MSRP"].cast("string")
+        ),
     )
 
     # Convert date columns to datetime format
-    df["OrderDate"] = pd.to_datetime(df["OrderDate"])
-    df["CustomerBirthDate"] = pd.to_datetime(df["CustomerBirthDate"])
+    df = df.withColumn("OrderDate", df["OrderDate"].cast("date"))
+    df = df.withColumn("CustomerBirthDate", df["CustomerBirthDate"].cast("date"))
 
     # Calculate CustomerAge at the time of OrderDate
-    df["CustomerAge"] = (df["OrderDate"] - df["CustomerBirthDate"]).dt.days // 365
+    df = df.withColumn(
+        "CustomerAge",
+        (
+            (
+                (
+                    df["OrderDate"].cast("timestamp").cast("long")
+                    - df["CustomerBirthDate"].cast("timestamp").cast("long")
+                )
+                / (365 * 24 * 60 * 60)
+            )
+        ).cast("integer"),
+    )
 
     return df
 
 
-def create_preprocessor():
-    # Define categorical and numeric features
-    categorical_features = [
-        "CustomerState",
-        "ProductDepartment",
-        "ProductSize",
-        "ProductID",
-    ]
-    numeric_features = [
-        "CustomerAge",
-        "ProductCost",
-        "DiscountPct",
-        "PurchasePrice",
-        "MSRP",
-        "CustomerID_encoded",
-    ]
-
-    # Define the age bins
-    age_bins = [0, 18, 30, 40, 50, 60, 70, float("inf")]
-
-    # Create the ColumnTransformer for preprocessing
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("cat", OneHotEncoder(), categorical_features),
-            ("num", "passthrough", numeric_features),
-            (
-                "age_binning",
-                KBinsDiscretizer(n_bins=len(age_bins) - 1, encode="onehot-dense"),
-                ["CustomerAge"],
-            ),
-        ]
-    )
-
-    return preprocessor
-
-
 def eval_metrics(actual, pred):
-    roc_auc = roc_auc_score(actual, pred)
-    brier_score = brier_score_loss(actual, pred)
+    roc_auc_evaluator = BinaryClassificationEvaluator(metricName="areaUnderROC")
+    brier_score_evaluator = BinaryClassificationEvaluator(metricName="brierScore")
+
+    roc_auc = roc_auc_evaluator.evaluate(pred)
+    brier_score = brier_score_evaluator.evaluate(pred)
+
     return roc_auc, brier_score
 
 
@@ -119,50 +100,106 @@ def eval_models(model_scores):
         print(f"***************************************")
 
 
+def create_preprocessor():
+    # Define categorical and numeric features
+    categorical_features = [
+        "CustomerState",
+        "ProductDepartment",
+        "ProductSize",
+        "ProductID",
+    ]
+    numeric_features = [
+        "CustomerAge",
+        "ProductCost",
+        "DiscountPct",
+        "PurchasePrice",
+        "MSRP",
+        "CustomerID_encoded",
+    ]
+
+    # Create indexers for categorical features
+    indexers = [
+        StringIndexer(inputCol=col, outputCol=col + "_index", handleInvalid="keep")
+        for col in categorical_features
+    ]
+
+    # One-hot encode categorical features
+    encoders = [
+        OneHotEncoder(inputCol=col + "_index", outputCol=col + "_encoded")
+        for col in categorical_features
+    ]
+
+    # Assemble the feature vector
+    assembler = VectorAssembler(
+        inputCols=numeric_features + [col + "_encoded" for col in categorical_features],
+        outputCol="features",
+    )
+
+    # Define the age discretizer
+    discretizer = QuantileDiscretizer(
+        numBuckets=6, inputCol="CustomerAge", outputCol="CustomerAge_discretized"
+    )
+
+    # Create the preprocessor stages
+    stages = indexers + encoders + date_converters + [assembler, discretizer]
+
+    # Create the preprocessor pipeline
+    preprocessor = Pipeline(stages=stages)
+
+    return preprocessor
+
+
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
-    np.random.seed(40)
+
+    spark = SparkSession.builder.appName("YourAppName").getOrCreate()
 
     dataset = "data/training.csv"
     try:
-        df = pd.read_csv(dataset, sep=",")
+        df = spark.read.csv(dataset, header=True, inferSchema=True)
     except Exception as e:
         logger.exception("Unable to read dataset. Error: %s", e)
 
     df = format_data(df)
 
-    # Create a new column 'CustomerID_encoded' with target encodings set to mean of 'Returned'
-    customer_id_mean = df.groupby("CustomerID")["Returned"].mean()
-    df["CustomerID_encoded"] = df["CustomerID"].map(customer_id_mean)
-
     # Split the data into training and test sets. (0.75, 0.25) split.
-    train, test = train_test_split(df)
+    train, test = df.randomSplit([0.75, 0.25], seed=42)
 
     # The predicted column is "Returned" which is boolean
-    X_train = train.drop(["Returned"], axis=1)
-    X_test = test.drop(["Returned"], axis=1)
-    y_train = train[["Returned"]]
-    y_test = test[["Returned"]]
+    feature_cols = df.columns
+    feature_cols.remove("Returned")
 
-    preprocessor = create_preprocessor()
+    # Create a list of feature columns
+    feature_assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
+
+    # Create a pipeline for preprocessing
+    preprocessor = Pipeline(stages=[feature_assembler])
+
+    # Fit the preprocessor on the training data
+    preprocessor_model = preprocessor.fit(train)
+
+    # Transform the training and test data using the preprocessor
+    train = preprocessor_model.transform(train)
+    test = preprocessor_model.transform(test)
 
     model_scores = {}
     for model_name in models:
         print(f"\nEvaluating model: {model_name}")
 
-        # Create the full pipeline including the classifier
-        pipeline = Pipeline(
-            [("preprocessor", preprocessor), ("classifier", models[model_name])]
-        )
+        # Create the classifier
+        classifier = models[model_name]
+
+        # Create a pipeline including the classifier
+        pipeline = Pipeline(stages=[classifier])
 
         with mlflow.start_run():
             # Fit the pipeline on the training data
-            pipeline.fit(X_train, y_train)
+            model = pipeline.fit(train)
 
-            # Make probability predictions on the testing data
-            y_prob = pipeline.predict_proba(X_test)[:, 1]
+            # Make predictions on the testing data
+            predictions = model.transform(test)
 
-            roc_auc, brier_score = eval_metrics(y_test, y_prob)
+            roc_auc, brier_score = eval_metrics(test["Returned"], predictions)
             model_scores[model_name] = [roc_auc, brier_score]
             print(f"  ROC AUC: {roc_auc}")
             print(f"  Brier Score: {brier_score}")
@@ -170,9 +207,9 @@ if __name__ == "__main__":
             mlflow.log_metric("roc_auc", roc_auc)
             mlflow.log_metric("brier_score", brier_score)
 
-            predictions = pipeline.predict_proba(X_train)[:, 1]
-            signature = infer_signature(X_train, predictions)
-
-            mlflow.sklearn.log_model(pipeline, model_name, signature=signature)
+            # Log the model to MLflow
+            log_model(model, model_name)
 
     eval_models(model_scores)
+
+    spark.stop()
