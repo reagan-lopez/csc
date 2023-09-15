@@ -23,7 +23,7 @@
 
     - This program trains the `Random Forest Classifier` model using the provided dataset [data/train.csv](data/train.csv).
     - Subsequently, predictions are carried out on the provided dataset [data/test.csv](data/test.csv).
-    - The resulting predictions are saved in the [results](results) directory. E.g. [results/predictions_20230829005920.csv](results/predictions_20230829005920.csv)
+    - The resulting predictions are saved in the [results](results) directory. E.g. [results/predictions_20230915003928.csv](results/predictions_20230915003928.csv)
 
 
 ## Details
@@ -41,11 +41,9 @@
    - Removed original purchase records (`Returned = 0`) for `OrderID`, `ProductID` combinations that have already been returned (`Returned = 1`).
    - Converted date columns into datetime format.
    - Derived `CustomerAge` column, indicating customer age during order, calculated as (`OrderDate - CustomerBirthDate) / 365`).
-   - Excluded columns such as `ID` and `OrderDate` that offer no contribution to the target variable.
+   - Excluded columns such as `ID` and `OrderDate` that offer no contribution to the target variable. Also excluded `CustomerID`.
    - **Note:** The `OrderDate` would have been relevant if the orders were recent and if the minimum return day policy had been stipulated in the requirement.
    - Enabled One-Hot Encoding for categorical features like `CustomerState`, `ProductDepartment`, `ProductSize`, and `ProductID`.
-   - Enabled Binning for the `CustomerAge` column using bins (0, 18, 30, 40, 50, 60, 70, inf).
-   - Enabled Target Encoding on `CustomerID`, set to the mean of the `Returned` values.
 
 3. Following thorough comparison, the **Random Forest Classifier** was selected as the optimal choice, based on an assessment of scores with other classifiers. To initiate the training process, execute [src/training.py](src/training.py):
     
@@ -55,26 +53,26 @@
 
     ```
     Evaluating model: GradientBoostingClassifier
-    ROC AUC: 0.7597895615915848
-    Brier Score: 0.18851713908180542
+    ROC AUC: 0.6080930018716165
+    Brier Score: 0.22552069527411897
 
     Evaluating model: LogisticRegression
-    ROC AUC: 0.7581815853066254
-    Brier Score: 0.18905687710762256
+    ROC AUC: 0.6015078525716959
+    Brier Score: 0.22602833099129133
 
     Evaluating model: AdaBoostClassifier
-    ROC AUC: 0.7567083720785605
-    Brier Score: 0.23935704479332662
+    ROC AUC: 0.6039288770892809
+    Brier Score: 0.24888510298349534
 
     Evaluating model: RandomForestClassifier
-    ROC AUC: 0.7903369742741564
-    Brier Score: 0.17442135210768528
+    ROC AUC: 0.6738378005099563
+    Brier Score: 0.21208089565738358
 
     ***************************************
     Best model for the dataset is:
     RandomForestClassifier
-    ROC AUC: 0.7903369742741564
-    Brier Score: 0.17442135210768528
+    ROC AUC: 0.6738378005099563
+    Brier Score: 0.21208089565738358
     ***************************************
     ```
     - **NOTE** The models can be further evaluated by tuning the hyperparameters such as `n_estimators`, and `max_depth` for the ensemble classifiers and `C`, `solver`, and `max_iter` for Logistic Regression. However given the time constraint of the assignment, this step has been omitted.

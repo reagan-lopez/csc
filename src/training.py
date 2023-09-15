@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, KBinsDiscretizer
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import (
     AdaBoostClassifier,
@@ -14,8 +14,8 @@ from sklearn.ensemble import (
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.feature_extraction import FeatureHasher
 from sklearn.metrics import roc_auc_score, brier_score_loss
-from urllib.parse import urlparse
 import mlflow
 from mlflow.models import infer_signature
 import mlflow.sklearn
@@ -72,22 +72,13 @@ def create_preprocessor():
         "DiscountPct",
         "PurchasePrice",
         "MSRP",
-        "CustomerID_encoded",
     ]
-
-    # Define the age bins
-    age_bins = [0, 18, 30, 40, 50, 60, 70, float("inf")]
 
     # Create the ColumnTransformer for preprocessing
     preprocessor = ColumnTransformer(
         transformers=[
             ("cat", OneHotEncoder(), categorical_features),
             ("num", "passthrough", numeric_features),
-            (
-                "age_binning",
-                KBinsDiscretizer(n_bins=len(age_bins) - 1, encode="onehot-dense"),
-                ["CustomerAge"],
-            ),
         ]
     )
 
@@ -130,10 +121,6 @@ if __name__ == "__main__":
         logger.exception("Unable to read dataset. Error: %s", e)
 
     df = format_data(df)
-
-    # Create a new column 'CustomerID_encoded' with target encodings set to mean of 'Returned'
-    customer_id_mean = df.groupby("CustomerID")["Returned"].mean()
-    df["CustomerID_encoded"] = df["CustomerID"].map(customer_id_mean)
 
     # Split the data into training and test sets. (0.75, 0.25) split.
     train, test = train_test_split(df)
