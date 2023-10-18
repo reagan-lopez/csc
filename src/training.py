@@ -13,12 +13,11 @@ from sklearn.ensemble import (
     RandomForestClassifier,
 )
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score, brier_score_loss
 import mlflow
 from mlflow.models import infer_signature
 import mlflow.sklearn
 
-from src.logger import logging
+from logger import logging
 
 models = {
     "GradientBoostingClassifier": GradientBoostingClassifier(),
@@ -48,7 +47,7 @@ def eval_models(model_scores):
 
 
 if __name__ == "__main__":
-    # warnings.filterwarnings("ignore")
+    warnings.filterwarnings("ignore")
     np.random.seed(40)
 
     dataset = "artifacts/training_data.csv"

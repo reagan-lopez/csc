@@ -9,8 +9,9 @@ import mlflow
 from mlflow.models import infer_signature
 import mlflow.sklearn
 import os
+import warnings
 
-from src.logger import logging
+from logger import logging
 import utils
 
 models = {"RandomForestClassifier": RandomForestClassifier()}
@@ -19,7 +20,7 @@ training_data_path = os.path.join("artifacts", "training_data.csv")
 prediction_data_path = os.path.join("artifacts", "prediction_data.csv")
 
 if __name__ == "__main__":
-    # warnings.filterwarnings("ignore")
+    warnings.filterwarnings("ignore")
     np.random.seed(40)
 
     logging.info("Start training..")

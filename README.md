@@ -21,14 +21,14 @@
     
     `python3 src/prediction.py`
 
-    - This program trains the `Random Forest Classifier` model using the provided dataset [data/train.csv](data/train.csv).
-    - Subsequently, predictions are carried out on the provided dataset [data/test.csv](data/test.csv).
-    - The resulting predictions are saved in the [results](results) directory. E.g. [results/predictions_20230915003928.csv](results/predictions_20230915003928.csv)
+    - This program trains the `Random Forest Classifier` model using the provided dataset [artifacts/training_data.csv](artifacts/training_data.csv).
+    - Subsequently, predictions are carried out on the provided dataset [artifacts/prediction_data.csv](artifacts/prediction_data.csv).
+    - The resulting predictions are saved in the [results](results) directory. E.g. [results/predictions_20231018051908.csv](results/predictions_20231018051908.csv)
 
 
 ## Details
 
-1. Conducted Exploratory Data Analysis (EDA) on the dataset [data/train.csv](data/train.csv).
+1. Conducted Exploratory Data Analysis (EDA) on the dataset [artifacts/training_data.csv](artifacts/training_data.csv).
    Please refer to the detailed EDA insights documented in the EDA notebook [notebook/eda.ipynb](notebook/eda.ipynb).
    - As indicated in the requirement, implemented the creation of a unique `ProductID` column based on `ProductDepartment`, `ProductCost`, and `MSRP`.
    - Calculated the `MSRP` by utilizing `DiscountPct` and `PurchasePrice` columns.

@@ -1,7 +1,12 @@
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.pipeline import Pipeline
+import pandas as pd
+from logger import logging
 import os
 import dill
-from src.logger import logging
-import pandas as pd
+from sklearn.metrics import roc_auc_score, brier_score_loss
 
 
 def save_object(file_path, obj):
@@ -45,4 +50,49 @@ def format_data(df):
     # Calculate CustomerAge at the time of OrderDate
     df["CustomerAge"] = (df["OrderDate"] - df["CustomerBirthDate"]).dt.days // 365
 
-    return df
+
+def create_preprocessor():
+    # Define categorical and numeric features
+    categorical_features = [
+        "CustomerState",
+        "ProductDepartment",
+        "ProductSize",
+        "ProductID",
+    ]
+    numerical_features = [
+        "CustomerAge",
+        "ProductCost",
+        "DiscountPct",
+        "PurchasePrice",
+        "MSRP",
+    ]
+
+    # Create transformers for each feature type
+    numerical_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="mean")),
+            ("scaler", StandardScaler()),
+        ]
+    )
+
+    categorical_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("onehot", OneHotEncoder()),
+        ]
+    )
+
+    # Create a ColumnTransformer to apply the transformers to the appropriate feature types
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", numerical_transformer, numerical_features),
+            ("cat", categorical_transformer, categorical_features),
+        ]
+    )
+    return preprocessor
+
+
+def eval_metrics(actual, pred):
+    roc_auc = roc_auc_score(actual, pred)
+    brier_score = brier_score_loss(actual, pred)
+    return roc_auc, brier_score
