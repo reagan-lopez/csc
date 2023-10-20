@@ -13,6 +13,7 @@ from sklearn.ensemble import (
     RandomForestClassifier,
 )
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
 import mlflow
 from mlflow.models import infer_signature
 import mlflow.sklearn
@@ -20,10 +21,29 @@ import mlflow.sklearn
 from logger import logging
 
 models = {
-    "GradientBoostingClassifier": GradientBoostingClassifier(),
-    "LogisticRegression": LogisticRegression(max_iter=10000),
-    "AdaBoostClassifier": AdaBoostClassifier(),
-    "RandomForestClassifier": RandomForestClassifier(),
+    "GradientBoostingClassifier": {
+        "model": GradientBoostingClassifier(),
+        "parameters": {
+            "model__learning_rate": [0.1, 0.01, 0.05, 0.001],
+            "model__n_estimators": [8, 16, 32, 64, 128, 256],
+            "model__subsample": [0.6, 0.7, 0.75, 0.8, 0.85, 0.9],
+        },
+    },
+    "LogisticRegression": {
+        "model": LogisticRegression(max_iter=10000),
+        "parameters": {},
+    },
+    "AdaBoostClassifier": {
+        "model": AdaBoostClassifier(),
+        "parameters": {
+            "model__learning_rate": [0.1, 0.01, 0.05, 0.001],
+            "model__n_estimators": [8, 16, 32, 64, 128, 256],
+        },
+    },
+    "RandomForestClassifier": {
+        "model": RandomForestClassifier(),
+        "parameters": {"model__n_estimators": [8, 16, 32, 64, 128, 256]},
+    },
 }
 
 
@@ -70,13 +90,18 @@ if __name__ == "__main__":
     preprocessor = utils.create_preprocessor()
 
     model_scores = {}
-    for model_name in models:
+    for model_name, values in models.items():
         print(f"\nEvaluating model: {model_name}")
+        model, params = values["model"], values["parameters"]
+
+        if params:
+            pipeline = Pipeline([("preprocessor", preprocessor), ("model", model)])
+            gs = GridSearchCV(pipeline, params, cv=3)
+            gs.fit(X_train, y_train)
+            pipeline.set_params(**gs.best_params_)
 
         # Create the full pipeline including the classifier
-        pipeline = Pipeline(
-            [("preprocessor", preprocessor), ("classifier", models[model_name])]
-        )
+        # pipeline = Pipeline([("preprocessor", preprocessor), ("model", model)])
 
         with mlflow.start_run():
             # Fit the pipeline on the training data
